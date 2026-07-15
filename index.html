@@ -117,11 +117,19 @@
     display:block; font-size:11.5px; text-transform:uppercase; letter-spacing:0.08em;
     color:var(--mist); margin-bottom:6px; font-weight:600;
   }
-  select#destGate{
+  .dir-row input,
+  select#destGate,
+  select#travelMode{
     width:100%;
     background:var(--bg-3); color:var(--ink);
     border:1px solid var(--line-strong); border-radius:8px;
     padding:10px 12px; font-family:'IBM Plex Sans', sans-serif; font-size:14px;
+  }
+  .dir-row input{
+    outline:none;
+  }
+  select#destGate,
+  select#travelMode{
     cursor:pointer;
   }
   .gps-btn{
@@ -531,16 +539,46 @@
       <div class="dir-grid">
         <div class="dir-controls">
           <div class="dir-row">
+            <label for="gateSearch">Search gates</label>
+            <input id="gateSearch" type="search" placeholder="Search gates — e.g. Gate 4" autocomplete="off" />
+          </div>
+          <div class="dir-row">
             <label for="destGate">Where are you headed?</label>
             <select id="destGate"></select>
           </div>
+          <div class="dir-row">
+            <label for="travelMode">How are you visiting?</label>
+            <select id="travelMode">
+              <option value="walking">Walking from nearby</option>
+              <option value="bus">Bus / public transit</option>
+              <option value="cab">Cab / ride-hail</option>
+              <option value="airport">From IGI Airport</option>
+              <option value="railway">From Hazrat Nizamuddin Railway</option>
+              <option value="2w">Personal 2-wheeler</option>
+              <option value="4w">Personal 4-wheeler</option>
+            </select>
+          </div>
+          <div class="dir-row">
+            <label for="originSelect">Starting point</label>
+            <select id="originSelect">
+              <option value="current">Use my current location</option>
+              <option value="airport">IGI Airport</option>
+              <option value="railway">Hazrat Nizamuddin Railway</option>
+            </select>
+          </div>
+          <div class="dir-row">
+            <p class="visit-prompt" id="visitPrompt">Choose your mode and origin, then share your location for the most accurate route. Airport and railway origins can route without GPS.</p>
+          </div>
           <button class="gps-btn" id="gpsBtn">📍 Share my location</button>
-          <div class="gps-status" id="gpsStatus">Location not shared yet — FanPulse can't route you until you share it.</div>
+          <div class="gps-status" id="gpsStatus">Location not shared yet — FanPulse can't route you until you share it or choose airport/railway.</div>
 
           <div class="route-readout" id="routeReadout">
+            <div class="r-line"><span>Mode</span><b id="routeMode">—</b></div>
             <div class="r-line"><span>Distance</span><b id="routeDist">—</b></div>
             <div class="r-line"><span>Direction</span><b id="routeBearing">—</b></div>
-            <div class="r-line"><span>Est. walk time</span><b id="routeTime">—</b></div>
+            <div class="r-line"><span>Est. travel time</span><b id="routeTime">—</b></div>
+            <div class="r-line"><span>Parking / transfer</span><b id="parkingInfo">—</b></div>
+            <div class="r-line"><span>Instructions</span><b id="routeAdvice">—</b></div>
             <div class="maps-btns">
               <a class="maps-link" id="googleMapsLink" href="#" target="_blank" rel="noopener">Open in Google Maps</a>
               <a class="maps-link" id="appleMapsLink" href="#" target="_blank" rel="noopener">Open in Apple Maps</a>
@@ -617,12 +655,21 @@
 
   /* ============ simulated live stadium state ============ */
   var gates = [
-    {id:'3',  label:'Gate 3 · South',   density:38, lat:40.8120, lng:-74.0745, capacity:1400, areaM2:900},
-    {id:'4',  label:'Gate 4 · Main',    density:61, lat:40.8135, lng:-74.0728, capacity:2200, areaM2:1200},
-    {id:'7',  label:'Gate 7 · North',   density:29, lat:40.8150, lng:-74.0745, capacity:1100, areaM2:750},
-    {id:'9',  label:'Gate 9 · East',    density:74, lat:40.8128, lng:-74.0722, capacity:1800, areaM2:1000},
-    {id:'12', label:'Gate 12 · Family', density:22, lat:40.8142, lng:-74.0765, capacity:900,  areaM2:700}
+    {id:'3',  label:'Gate 3 · South Plaza',   density:38, lat:28.58170, lng:77.23434, capacity:1400, areaM2:900},
+    {id:'4',  label:'Gate 4 · Main West',     density:61, lat:28.58268, lng:77.23330, capacity:2200, areaM2:1200},
+    {id:'7',  label:'Gate 7 · North Entry',    density:29, lat:28.58450, lng:77.23440, capacity:1100, areaM2:750},
+    {id:'9',  label:'Gate 9 · East Plaza',     density:74, lat:28.58320, lng:77.23570, capacity:1800, areaM2:1000},
+    {id:'12', label:'Gate 12 · Family Entry',  density:22, lat:28.58210, lng:77.23540, capacity:900,  areaM2:700}
   ];
+  var parkingAreas = [
+    {id:'P1', label:'North Parking',      lat:28.58505, lng:77.23470, type:'4W / 2W', capacity:420},
+    {id:'P2', label:'East Parking',       lat:28.58365, lng:77.23650, type:'4W / 2W', capacity:360},
+    {id:'P3', label:'South Parking',      lat:28.58140, lng:77.23420, type:'2W only', capacity:220}
+  ];
+  var originPoints = {
+    airport: {label:'IGI Airport', lat:28.556162, lng:77.100281},
+    railway: {label:'Hazrat Nizamuddin Railway', lat:28.579000, lng:77.258740}
+  };
   var weather = {tempC:34, condition:'clear'};
 
   /* Fruin pedestrian Level-of-Service scale (persons/m²) — established crowd-safety standard */
@@ -839,7 +886,7 @@
         return "Te llevo por la entrada accesible cerca de "+c.g.label+". Es sin escalones y está al "+c.g.density+"% de capacidad. Un voluntario de chaleco azul puede acompañarte si lo necesitas.";
       },
       transport: function(c){
-        return "Faltan "+c.kickoff+" para el inicio. "+c.busy.label+" es el más concurrido ahora ("+c.busy.density+"%), así que te sugiero salir en los próximos 10–15 minutos.";
+        return "Faltan "+c.kickoff+" para el inicio. "+c.busy.label+" es el más concurrido ahora ("+c.busy.density+"%) — recomiendo salir en los próximos 10–15 minutos.";
       },
       safety: function(c){
         if(c.gateSpecified){
@@ -862,11 +909,11 @@
         return c.g.label+" के पास व्हीलचेयर-सुलभ प्रवेश की ओर भेज रहा हूँ। यह "+c.g.density+"% क्षमता पर है। नीली जैकेट वाला स्वयंसेवक साथ आ सकता है।";
       },
       transport: function(c){
-        return "किकऑफ़ में "+c.kickoff+" बचे हैं। "+c.busy.label+" अभी सबसे व्यस्त है ("+c.busy.density+"%), इसलिए अगले 10–15 मिनट में निकलना बेहतर रहेगा।";
+        return "किकऑफ़ में "+c.kickoff+" बचे हैं। "+c.busy.label+" अभी सबसे व्यस्त है ("+c.busy.density+"%) — इसलिए अगले 10–15 मिनट में निकलना बेहतर रहेगा।";
       },
       safety: function(c){
         if(c.gateSpecified){
-          return c.g.label+" अभी "+c.g.density+"% क्षमता पर है — यानी "+c.lvl+"। "+(c.g.density>=85 ? "यदि संभव हो तो 10 मिनट रुकें।" : "आगे बढ़ना सुरक्षित है।");
+          return c.g.label+" अभी "+c.g.density+"% क्षमता पर है — यानी "+c.lvl+". "+(c.g.density>=85 ? "यदि संभव हो तो 10 मिनट रुकें।" : "आगे बढ़ना सुरक्षित है।");
         }
         return "अभी सबसे व्यस्त "+c.busy.label+" है ("+c.busy.density+"%)। बाकी सभी द्वार शांत हैं।";
       },
@@ -882,7 +929,7 @@
           : "متجه إلى "+c.g.label+"؟ الوضع "+c.lvl+" ("+c.g.density+"%) — يمكنك المرور مباشرة من المدخل الرئيسي.";
       },
       accessibility: function(c){
-        return "سأوجهك إلى المدخل المخصص لذوي الاحتياجات قرب "+c.g.label+"، وهو بلا درجات وحالياً عند "+c.g.density+"% من السعة. متطوع بسترة زرقاء يمكنه مرافقتك.";
+        return "سأوجهك إلى المدخل المخصص لذوي الاحتياجات قرب "+c.g.label+", وهو بلا درجات وحالياً عند "+c.g.density+"% من السعة. متطوع بسترة زرقاء يمكنه مرافقتك.";
       },
       transport: function(c){
         return "بداية المباراة بعد "+c.kickoff+". "+c.busy.label+" هو الأكثر ازدحاماً حالياً ("+c.busy.density+"%)، لذا يُفضّل التحرك خلال 10–15 دقيقة القادمة.";
@@ -914,7 +961,7 @@
         if(c.gateSpecified){
           return c.g.label+" est à "+c.g.density+"% de capacité — niveau "+c.lvl+". "+(c.g.density>=85 ? "Si possible, patientez environ 10 minutes." : "Vous pouvez y aller sans souci.");
         }
-        return "Le plus chargé en ce moment est "+c.busy.label+" à "+c.busy.density+"%. Les autres entrées sont plus calmes.";
+        return "Le plus chargé en ce moment est "+c.busy.label+" avec "+c.busy.density+"%. Les autres entrées sont plus calmes.";
       },
       weather: function(c){
         return "Il fait "+c.temp+"°C sur le site. Le point d'eau le plus proche est à 40m de "+c.g.label+". "+(c.temp>=32 ? "Je vous conseille l'itinéraire ombragé." : "Les conditions restent correctes, pensez à boire régulièrement.");
@@ -1034,7 +1081,7 @@
     if(userLocation){
       updateRoute();
     } else {
-      var dest = gates.find(function(g){ return g.id === gateId; });
+      var dest = gates.find(function(g){ return g.id === gateId; }) || gates[0];
       if(dest && leafletMap) leafletMap.panTo([dest.lat, dest.lng]);
       var statusEl = document.getElementById('gpsStatus');
       statusEl.textContent = 'Tap "Share my location" below to get directions from where you are.';
@@ -1043,7 +1090,7 @@
   });
 
   /* ============ GPS + directions ============ */
-  var STADIUM_CENTER = [28.582900, 77.234400];
+  var STADIUM_CENTER = [28.582873, 77.234380];
   var userLocation = null;
   var leafletMap = null, userMarker = null, routeLine = null;
 
@@ -1071,11 +1118,70 @@
     return dirs[Math.round(deg/45) % 8];
   }
 
-  function populateDestGate(){
+  function populateDestGate(filter){
     var sel = document.getElementById('destGate');
-    sel.innerHTML = gates.map(function(g){
+    var query = (filter || '').toLowerCase().trim();
+    var matches = gates.filter(function(g){
+      return !query || g.label.toLowerCase().indexOf(query) !== -1 || g.id === query;
+    });
+    if(matches.length === 0){
+      sel.innerHTML = '<option value="">No gates found</option>';
+      return;
+    }
+    sel.innerHTML = matches.map(function(g){
       return '<option value="'+g.id+'">'+g.label+'</option>';
     }).join('');
+    if(!matches.some(function(g){ return g.id === sel.value;})){
+      sel.value = matches[0].id;
+    }
+  }
+
+  function getTravelMode(){
+    return document.getElementById('travelMode').value;
+  }
+
+  function routeModeLabel(mode){
+    switch(mode){
+      case 'walking': return 'Walking';
+      case 'bus': return 'Bus / transit';
+      case 'cab': return 'Cab / ride-hail';
+      case 'airport': return 'From airport';
+      case 'railway': return 'From railway station';
+      case '2w': return 'Personal 2-wheeler';
+      case '4w': return 'Personal 4-wheeler';
+      default: return 'Travel';
+    }
+  }
+
+  function routeLinkMode(mode){
+    if(mode === 'walking') return 'walking';
+    if(mode === 'bus' || mode === 'railway') return 'transit';
+    return 'driving';
+  }
+
+  function isPersonalVehicleMode(mode){
+    return mode === '2w' || mode === '4w';
+  }
+
+  function nearestParkingToGate(g){
+    return parkingAreas.reduce(function(best, p){
+      var dist = distanceMeters(g.lat, g.lng, p.lat, p.lng);
+      if(!best || dist < best.dist) return {parking:p, dist:dist};
+      return best;
+    }, null);
+  }
+
+  function getOriginPoint(){
+    var originKey = document.getElementById('originSelect').value;
+    var mode = getTravelMode();
+    if(originKey === 'current'){
+      if(mode === 'airport' || mode === 'railway'){
+        return originPoints[mode];
+      }
+      if(!userLocation) return null;
+      return {lat:userLocation.lat, lng:userLocation.lng, label:'Your location'};
+    }
+    return originPoints[originKey] || null;
   }
 
   function initMap(){
@@ -1092,36 +1198,78 @@
   }
 
   function updateRoute(){
-    if(!userLocation) return;
+    var origin = getOriginPoint();
+    if(!origin){
+      var statusEl = document.getElementById('gpsStatus');
+      statusEl.textContent = 'Share your location to route using this travel mode.';
+      statusEl.className = 'gps-status err';
+      return;
+    }
+    var mode = getTravelMode();
     var destSel = document.getElementById('destGate');
     var dest = gates.find(function(g){ return g.id === destSel.value; }) || gates[0];
+    var parking = isPersonalVehicleMode(mode) ? nearestParkingToGate(dest).parking : null;
+    var routeTarget = parking || dest;
 
-    // Text readout + Maps deep links never depend on the map tiles loading —
-    // these must keep working even if Leaflet/OSM tiles are unreachable.
-    var dist = distanceMeters(userLocation.lat, userLocation.lng, dest.lat, dest.lng);
-    var brg = bearingDeg(userLocation.lat, userLocation.lng, dest.lat, dest.lng);
-    var mins = Math.max(1, Math.round(dist/1.4/60));
+    var dist = distanceMeters(origin.lat, origin.lng, routeTarget.lat, routeTarget.lng);
+    var brg = bearingDeg(origin.lat, origin.lng, routeTarget.lat, routeTarget.lng);
+    var speed = mode === 'walking' ? 1.4 : mode === 'bus' ? 8 : 35;
+    var mins = Math.max(1, Math.round(dist / 1000 / speed * 60));
 
+    document.getElementById('routeMode').textContent = routeModeLabel(mode);
     document.getElementById('routeDist').textContent = dist < 950 ? Math.round(dist)+' m' : (dist/1000).toFixed(1)+' km';
     document.getElementById('routeBearing').textContent = compassFrom(brg) + ' (' + Math.round(brg) + '°)';
-    document.getElementById('routeTime').textContent = '~' + mins + ' min walk';
+    document.getElementById('routeTime').textContent = '~' + mins + ' min';
+
+    var routeAdvice = '';
+    if(mode === 'airport'){
+      routeAdvice = 'From IGI Airport, take a cab or app taxi along NH 48 and Ring Road to the stadium perimeter, then walk to ' + dest.label + '.';
+    } else if(mode === 'railway'){
+      routeAdvice = 'From Hazrat Nizamuddin Railway, take a cab or metro toward JLN Stadium, then walk to ' + dest.label + '.';
+    } else if(mode === 'bus'){
+      routeAdvice = 'Use Delhi public transit or stadium shuttle. Walk to ' + dest.label + ' after the transfer stop.';
+    } else if(mode === 'cab'){
+      routeAdvice = 'Book a cab to ' + routeTarget.label + ' and follow the map link for the fastest arrival.';
+    } else if(mode === 'walking'){
+      routeAdvice = 'Walk directly across the stadium concourse to ' + dest.label + '.';
+    } else if(isPersonalVehicleMode(mode) && parking){
+      var parkWalk = distanceMeters(parking.lat, parking.lng, dest.lat, dest.lng);
+      routeAdvice = 'Park at ' + parking.label + ' and then walk ' + (parkWalk < 950 ? Math.round(parkWalk) + ' m' : (parkWalk/1000).toFixed(1) + ' km') + ' to ' + dest.label + '.';
+    }
+
+    if(parking){
+      var parkWalk = distanceMeters(parking.lat, parking.lng, dest.lat, dest.lng);
+      document.getElementById('parkingInfo').textContent = parking.label + ' — walk ' + (parkWalk < 950 ? Math.round(parkWalk)+' m' : (parkWalk/1000).toFixed(1)+' km') + ' to ' + dest.label;
+    } else {
+      document.getElementById('parkingInfo').textContent = mode === 'bus' || mode === 'airport' || mode === 'railway' ? 'Transfer ready' : '—';
+    }
+    document.getElementById('routeAdvice').textContent = routeAdvice || 'Follow the map link for the best path to the gate.';
     document.getElementById('routeReadout').classList.add('show');
 
-    document.getElementById('googleMapsLink').href =
-      'https://www.google.com/maps/dir/?api=1&origin='+userLocation.lat+','+userLocation.lng+
-      '&destination='+dest.lat+','+dest.lng+'&travelmode=walking';
-    document.getElementById('appleMapsLink').href =
-      'https://maps.apple.com/?saddr='+userLocation.lat+','+userLocation.lng+
-      '&daddr='+dest.lat+','+dest.lng+'&dirflg=w';
+    var statusEl = document.getElementById('gpsStatus');
+    if(mode === 'airport' || mode === 'railway'){
+      statusEl.textContent = 'Routing from ' + origin.label + ' to ' + dest.label + '. Share your location anytime for even more precise walking directions inside the stadium.';
+      statusEl.className = 'gps-status ok';
+    } else {
+      statusEl.textContent = 'Routing from your shared location to ' + dest.label + '.';
+      statusEl.className = 'gps-status ok';
+    }
 
-    // Visual map is a bonus on top — skip quietly if Leaflet/tiles didn't load.
+    var travelMode = routeLinkMode(mode);
+    document.getElementById('googleMapsLink').href =
+      'https://www.google.com/maps/dir/?api=1&origin='+origin.lat+','+origin.lng+
+      '&destination='+routeTarget.lat+','+routeTarget.lng+'&travelmode='+travelMode;
+    document.getElementById('appleMapsLink').href =
+      'https://maps.apple.com/?saddr='+origin.lat+','+origin.lng+
+      '&daddr='+routeTarget.lat+','+routeTarget.lng+'&dirflg=' + (travelMode === 'walking' ? 'w' : 'd');
+
     if(!leafletMap) return;
     if(userMarker) leafletMap.removeLayer(userMarker);
-    userMarker = L.circleMarker([userLocation.lat, userLocation.lng], {radius:8, color:'#59C88F', fillColor:'#59C88F', fillOpacity:1, weight:2})
-      .addTo(leafletMap).bindTooltip('You are here');
+    userMarker = L.circleMarker([origin.lat, origin.lng], {radius:8, color:'#59C88F', fillColor:'#59C88F', fillOpacity:1, weight:2})
+      .addTo(leafletMap).bindTooltip(origin.label);
 
     if(routeLine) leafletMap.removeLayer(routeLine);
-    routeLine = L.polyline([[userLocation.lat,userLocation.lng],[dest.lat,dest.lng]], {color:'#FFB238', weight:3, dashArray:'6,6'}).addTo(leafletMap);
+    routeLine = L.polyline([[origin.lat,origin.lng],[routeTarget.lat,routeTarget.lng]], {color:'#FFB238', weight:3, dashArray:'6,6'}).addTo(leafletMap);
     leafletMap.fitBounds(routeLine.getBounds(), {padding:[36,36]});
   }
 
@@ -1145,37 +1293,29 @@
     }, {enableHighAccuracy:true, timeout:10000});
   });
 
-  document.getElementById('destGate').addEventListener('change', function(e){
-    var selectedId = e.target.value;
-    if(userLocation){
-      updateRoute();
-    } else if(leafletMap){
-      var dest = gates.find(function(g){ return g.id === selectedId; }) || gates[0];
-      leafletMap.panTo([dest.lat, dest.lng]);
-    }
+  document.getElementById('gateSearch').addEventListener('input', function(e){
+    populateDestGate(e.target.value);
   });
 
-  document.getElementById('csGate').addEventListener('change', renderCrowdScience);
+  document.getElementById('travelMode').addEventListener('change', function(){
+    updateRoute();
+  });
 
-  /* ============ scroll-spy for bottom nav ============ */
-  function initScrollSpy(){
-    var navLinks = document.querySelectorAll('.bottom-nav a');
-    var sectionIds = ['pulse','assistant','directions','signals'];
-    if(!('IntersectionObserver' in window)) return;
-    var obs = new IntersectionObserver(function(entries){
-      entries.forEach(function(entry){
-        if(entry.isIntersecting){
-          navLinks.forEach(function(a){
-            a.classList.toggle('active', a.getAttribute('data-sec') === entry.target.id);
-          });
-        }
-      });
-    }, {rootMargin:'-40% 0px -50% 0px', threshold:0});
-    sectionIds.forEach(function(id){
-      var el = document.getElementById(id);
-      if(el) obs.observe(el);
-    });
-  }
+  document.getElementById('originSelect').addEventListener('change', function(){
+    updateRoute();
+  });
+
+  document.getElementById('destGate').addEventListener('change', function(e){
+    if(getTravelMode() === 'airport' || getTravelMode() === 'railway' || userLocation){
+      updateRoute();
+    } else if(leafletMap){
+      var dest = gates.find(function(g){ return g.id === e.target.value; }) || gates[0];
+      leafletMap.panTo([dest.lat, dest.lng]);
+      var statusEl = document.getElementById('gpsStatus');
+      statusEl.textContent = 'Pick a gate and share your location to route from nearby. Airport/railway origins work without GPS.';
+      statusEl.className = 'gps-status';
+    }
+  });
 
   /* ============ installable app (Android + iOS) ============ */
   var deferredPrompt = null;
