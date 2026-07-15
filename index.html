@@ -90,7 +90,8 @@
   .bottom-nav{
     display:none;
     position:fixed; left:0; right:0; bottom:0; z-index:30;
-    background:var(--bg-3);
+    background:rgba(11,35,27,0.96);
+    backdrop-filter:blur(10px);
     border-top:1px solid var(--line-strong);
     padding:8px 6px calc(8px + env(safe-area-inset-bottom));
   }
@@ -168,9 +169,8 @@
   .show-map-btn:hover{background:rgba(255,178,56,0.1);}
 
   @media (max-width:760px){
-    body{padding-bottom:var(--nav-h, 76px);} /* room for bottom nav — kept in sync with its real height via JS */
+    body{padding-bottom:64px;} /* room for bottom nav */
     .bottom-nav{display:block;}
-    .panel:last-of-type .panel-card, .signals{margin-bottom:20px;}
   }
   .brand{
     display:flex; align-items:center; gap:10px;
@@ -451,10 +451,6 @@
     color:var(--mist); font-size:13px;
   }
   .footer-inner b{color:var(--ink);}
-
-  #pulse, #assistant, #directions, #signals{
-    scroll-margin-top:calc(64px + env(safe-area-inset-top));
-  }
 
   @media (max-width:640px){
     .topbar-right{display:none;}
@@ -1161,17 +1157,6 @@
 
   document.getElementById('csGate').addEventListener('change', renderCrowdScience);
 
-  /* ============ keep body padding in sync with the real bottom-nav height ============ */
-  /* Fixes the nav visually overlapping the last bit of page content (footer/cards) on
-     devices where the safe-area inset makes the bar taller than any fixed guess. */
-  function syncNavHeight(){
-    var nav = document.querySelector('.bottom-nav');
-    if(!nav) return;
-    var visible = getComputedStyle(nav).display !== 'none';
-    var h = visible ? nav.getBoundingClientRect().height : 0;
-    document.documentElement.style.setProperty('--nav-h', Math.ceil(h) + 'px');
-  }
-
   /* ============ scroll-spy for bottom nav ============ */
   function initScrollSpy(){
     var navLinks = document.querySelectorAll('.bottom-nav a');
@@ -1235,13 +1220,8 @@
     renderCrowdScience();
     initMap();
     initScrollSpy();
-    syncNavHeight();
-    // fonts/layout can still settle a moment after 'load' — recheck shortly after
-    setTimeout(syncNavHeight, 300);
     addMsg('bot', "Live and reading all gates. Ask me anything — try one of the quick prompts below, or pick your language up top. Head to Directions if you'd like me to route you from where you're standing.");
   });
-  window.addEventListener('resize', syncNavHeight);
-  window.addEventListener('orientationchange', function(){ setTimeout(syncNavHeight, 250); });
 
   /* ============ main loop ============ */
   function loop(){
