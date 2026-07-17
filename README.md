@@ -123,22 +123,7 @@ python3 -m http.server 8000
 
 Or just double-click `index.html`.
 
----
-
-## Deploying to GitHub Pages
-
-1. Push this whole folder to GitHub (public, single branch — e.g. `main`), keeping `index.html`, `manifest.json`, `sw.js`, and the `icons/` folder all at the repo root together (relative paths depend on this).
-2. Go to **Settings → Pages**.
-3. Under **Build and deployment**, set **Source** to `Deploy from a branch`, branch `main`, folder `/ (root)`.
-4. Save — GitHub gives you a URL like `https://<username>.github.io/<repo-name>/` within a minute or two.
-5. Open that URL on a phone to test "Add to Home Screen" (Android) or the Share → Add to Home Screen flow (iOS), and test the GPS button — your browser will prompt for location permission on first tap.
-
-**Note:** GPS and "Install app" both require **HTTPS** — GitHub Pages serves everything over HTTPS by default, so this works out of the box once deployed. Testing locally over plain `http://localhost` also works for GPS (browsers allow geolocation on localhost), but service-worker install prompts are more reliable on the deployed HTTPS URL.
-
----
-
 ## Tech stack
-
 - Vanilla HTML / CSS / JavaScript — no frameworks, no build step
 - Canvas API for the live pulse visualization
 - Browser Geolocation API for GPS directions (no key, no server, stays on-device)
@@ -147,12 +132,3 @@ Or just double-click `index.html`.
 - Web App Manifest + Service Worker for installable, offline-tolerant PWA behavior on Android and iOS
 - Google Fonts (IBM Plex Sans, IBM Plex Sans Condensed, IBM Plex Mono) loaded via CDN
 
-## Roadmap beyond this prototype
-
-- Swap the simulated signal layer for real turnstile/CCTV/IoT feeds
-- Move reasoning server-side with a real Claude API call (see architecture note above)
-- Add crowd-forecast module (predict density 15–30 min ahead, not just read it live)
-- Replace straight-line GPS routing with indoor pathing (stadium concourse graph) for turn-by-turn inside the venue, not just to the gate
-- Add speech-to-speech translation for volunteer-fan conversations
-- Wrap the PWA in Capacitor/React Native if a native App Store / Play Store listing is needed later
-- Human-in-the-loop approval flow for any safety-critical recommendation (gate closures, evacuations)
