@@ -37,6 +37,8 @@
   html{scroll-behavior:smooth;}
   body{
     margin:0;
+    min-height:100svh;
+    padding-bottom:calc(90px + env(safe-area-inset-bottom));
     background:var(--bg);
     color:var(--ink);
     font-family:'IBM Plex Sans', sans-serif;
@@ -93,7 +95,7 @@
     background:rgba(11,35,27,0.96);
     backdrop-filter:blur(10px);
     border-top:1px solid var(--line-strong);
-    padding:8px 6px calc(8px + env(safe-area-inset-bottom));
+    padding:8px 6px calc(10px + env(safe-area-inset-bottom));
   }
   .bottom-nav ul{list-style:none; display:flex; margin:0; padding:0;}
   .bottom-nav li{flex:1;}
@@ -164,6 +166,7 @@
     width:100%; height:260px; border-radius:12px; overflow:hidden;
     border:1px solid var(--line-strong);
     background:var(--bg-3);
+    touch-action:manipulation;
   }
   @media (max-width:760px){ #mapPreview{height:200px;} }
   .show-map-btn{
@@ -244,7 +247,14 @@
   .pulse-reading b{color:var(--amber);}
   canvas#pulseCanvas{
     width:100%; height:120px; display:block;
-    margin:6px 0 16px;
+    margin:6px 0 8px;
+  }
+  .pulse-caption{
+    font-size:11.5px;
+    color:var(--mist);
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    margin-bottom:12px;
   }
   .gate-row{
     display:flex; flex-wrap:wrap; gap:10px;
@@ -448,6 +458,14 @@
     font-family:'IBM Plex Sans Condensed', sans-serif; text-transform:uppercase;
     letter-spacing:0.03em; font-size:16px; margin:0; font-weight:600;
   }
+  .secondary-btn{
+    background:transparent; color:var(--ink); border:1px solid var(--line-strong);
+    border-radius:8px; padding:7px 11px; font-size:12px; font-weight:600;
+    cursor:pointer; font-family:'IBM Plex Sans', sans-serif;
+  }
+  .secondary-btn:hover{background:rgba(255,178,56,0.08); border-color:var(--amber);}
+  .cs-accordion{display:none; margin-top:12px; padding-top:12px; border-top:1px solid var(--line);}
+  .cs-accordion.show{display:block;}
   select#csGate{
     background:var(--bg-3); color:var(--ink); border:1px solid var(--line-strong);
     border-radius:8px; padding:7px 11px; font-family:'IBM Plex Sans', sans-serif; font-size:13px;
@@ -496,6 +514,10 @@
   @media (max-width:640px){
     .topbar-right{display:none;}
     .msg{max-width:88%;}
+    .panel{padding:0 16px;}
+    .signals{padding:0 16px;}
+    .hero{padding:56px 16px 20px;}
+    .pulse-wrap{padding:18px 16px 14px;}
   }
 </style>
 </head>
@@ -528,6 +550,7 @@
         <div class="pulse-reading">Aggregate load <b id="aggReading">—%</b></div>
       </div>
       <canvas id="pulseCanvas"></canvas>
+      <div class="pulse-caption">Aggregate load across monitored gates</div>
       <div class="gate-row" id="gateRow"></div>
     </div>
   </section>
@@ -642,7 +665,10 @@
     <div class="cs-card">
       <div class="cs-bar">
         <h3>Crowd Science — per gate</h3>
-        <select id="csGate"></select>
+        <div class="panel-bar-right">
+          <button class="secondary-btn" id="aboutToggle" type="button" aria-expanded="false">How it works</button>
+          <select id="csGate" aria-label="Select gate"></select>
+        </div>
       </div>
       <div class="cs-body">
         <div class="cs-grid" id="csGrid"></div>
@@ -656,8 +682,10 @@
         <div class="los-label"><span>A · free flow</span><span>F · crowd crush risk</span></div>
         <p class="los-readout" id="losText" style="margin-top:6px;">—</p>
 
-        <div class="cs-note">
-          <b>Methodology:</b> "Devices on venue Wi-Fi" counts connections to the venue's own access points — legitimate, consent-free, because it's the venue's network counting its own traffic. "FanPulse app users" mirrors how Google Maps itself estimates how busy a place is: not by scanning nearby phones, but by aggregating its <i>own app's</i> opted-in users (Android's Location Timeline). No app — including this one — can see another device's GPS without that person installing that specific app and granting it permission; that's an OS-level restriction, not a missing feature. Movement difficulty uses Fruin's pedestrian Level-of-Service scale (persons/m²), an established crowd-safety standard. CO₂ and heat index are shown as the relevant metrics for comfort and safety in open-air and semi-enclosed stadiums. (A larger-scale tier exists in India via telecom cell-tower attach data — used for events like Kumbh Mela crowd management — but that requires an official government/telecom partnership, not something any public app can call directly.)
+        <div class="cs-accordion" id="methodologyPanel">
+          <div class="cs-note">
+            <b>Methodology:</b> "Devices on venue Wi-Fi" counts connections to the venue's own access points — legitimate, consent-free, because it's the venue's network counting its own traffic. "FanPulse app users" mirrors how Google Maps itself estimates how busy a place is: not by scanning nearby phones, but by aggregating its <i>own app's</i> opted-in users (Android's Location Timeline). No app — including this one — can see another device's GPS without that person installing that specific app and granting it permission; that's an OS-level restriction, not a missing feature. Movement difficulty uses Fruin's pedestrian Level-of-Service scale (persons/m²), an established crowd-safety standard. CO₂ and heat index are shown as the relevant metrics for comfort and safety in open-air and semi-enclosed stadiums. (A larger-scale tier exists in India via telecom cell-tower attach data — used for events like Kumbh Mela crowd management — but that requires an official government/telecom partnership, not something any public app can call directly.)
+          </div>
         </div>
       </div>
     </div>
@@ -1403,7 +1431,15 @@ function gateSeverityClass(density){
     }, function(err){
       document.getElementById('routeReadout').classList.remove('show');
       document.getElementById('gateSearch').focus();
-      statusEl.textContent = 'Could not get your location (' + err.message + '). Pick a gate with the search box or choose airport/railway for a preset route.';
+      var message = 'Could not get your location. Pick a gate with the search box or choose airport/railway for a preset route.';
+      if(err && err.code === 1){
+        message = 'Location permission was denied. Choose airport/railway for a preset route or search a gate to continue.';
+      } else if(err && err.code === 2){
+        message = 'Location could not be determined right now. Search a gate or choose airport/railway for a route.';
+      } else if(err && err.code === 3){
+        message = 'Location request timed out. Try again or choose airport/railway for a preset route.';
+      }
+      statusEl.textContent = message;
       statusEl.className = 'gps-status err';
     }, {enableHighAccuracy:true, timeout:10000});
   });
@@ -1436,11 +1472,38 @@ function gateSeverityClass(density){
   var deferredPrompt = null;
   var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   var isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  var canInstallPrompt = 'BeforeInstallPromptEvent' in window;
+
+  function updateInstallBanner(){
+    var banner = document.getElementById('installBanner');
+    var btn = document.getElementById('installBtn');
+    var text = document.getElementById('installText');
+    if(isStandalone){
+      banner.classList.remove('show');
+      return;
+    }
+    if(isIOS){
+      text.innerHTML = '<b>Install FanPulse</b> — tap the Share icon in Safari, then "Add to Home Screen".';
+      btn.style.display = 'none';
+      banner.classList.add('show');
+      return;
+    }
+    if(deferredPrompt){
+      text.innerHTML = '<b>Install FanPulse</b> — add it to your home screen for one-tap access on match day.';
+      btn.style.display = '';
+      btn.textContent = 'Install';
+      banner.classList.add('show');
+    } else if(canInstallPrompt){
+      text.innerHTML = '<b>Install FanPulse</b> — use the browser menu on Android to add it to your home screen.';
+      btn.style.display = 'none';
+      banner.classList.add('show');
+    }
+  }
 
   window.addEventListener('beforeinstallprompt', function(e){
     e.preventDefault();
     deferredPrompt = e;
-    if(!isStandalone) document.getElementById('installBanner').classList.add('show');
+    updateInstallBanner();
   });
 
   document.getElementById('installBtn').addEventListener('click', function(){
@@ -1455,10 +1518,8 @@ function gateSeverityClass(density){
     document.getElementById('installBanner').classList.remove('show');
   });
 
-  if(isIOS && !isStandalone){
-    document.getElementById('installText').innerHTML = '<b>Install FanPulse</b> — tap the Share icon in Safari, then "Add to Home Screen".';
-    document.getElementById('installBtn').style.display = 'none';
-    document.getElementById('installBanner').classList.add('show');
+  if(!isStandalone){
+    updateInstallBanner();
   }
 
   if('serviceWorker' in navigator){
@@ -1467,8 +1528,49 @@ function gateSeverityClass(density){
     });
   }
 
+  function initScrollSpy(){
+    var links = Array.from(document.querySelectorAll('.bottom-nav a'));
+    if(!links.length) return;
+    var sections = ['pulse', 'assistant', 'directions', 'signals'];
+    var activeId = 'pulse';
+    function setActive(id){
+      activeId = id;
+      links.forEach(function(link){
+        link.classList.toggle('active', link.getAttribute('href').slice(1) === id);
+      });
+    }
+    if('IntersectionObserver' in window){
+      var observer = new IntersectionObserver(function(entries){
+        var visible = entries.filter(function(entry){ return entry.isIntersecting; }).sort(function(a,b){ return b.intersectionRatio - a.intersectionRatio; })[0];
+        if(visible){ setActive(visible.target.id); }
+      }, {threshold:[0.3, 0.6]});
+      sections.forEach(function(id){
+        var section = document.getElementById(id);
+        if(section) observer.observe(section);
+      });
+    } else {
+      window.addEventListener('scroll', function(){
+        var current = sections.find(function(id){
+          var section = document.getElementById(id);
+          if(!section) return false;
+          var top = section.getBoundingClientRect().top;
+          return top <= 140;
+        }) || 'pulse';
+        setActive(current);
+      }, {passive:true});
+    }
+    setActive(activeId);
+  }
+
   document.getElementById('aiModeBtn').addEventListener('click', function(){
     document.getElementById('aiSettings').classList.toggle('show');
+  });
+
+  document.getElementById('aboutToggle').addEventListener('click', function(){
+    var panel = document.getElementById('methodologyPanel');
+    var expanded = this.getAttribute('aria-expanded') === 'true';
+    this.setAttribute('aria-expanded', String(!expanded));
+    panel.classList.toggle('show', !expanded);
   });
   document.getElementById('saveKeyBtn').addEventListener('click', function(){
     var val = document.getElementById('apiKeyInput').value.trim();
@@ -1495,7 +1597,7 @@ function gateSeverityClass(density){
     renderCrowdScience();
     initMap();
     initScrollSpy();
-    addMsg('bot', "Live and reading all gates. Ask me anything — try one of the quick prompts below, or pick your language up top. Head to Directions if you'd like me to route you from where you're standing.");
+    addMsg('bot', "Live and reading all gates. Ask me anything — try one of the quick prompts below, or pick your language up top. For complex or out-of-scope questions, I may fall back to a curated response because this is a prototype.");
   });
 
   /* ============ main loop ============ */
