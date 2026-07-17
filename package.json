@@ -1,7 +1,7 @@
 {
   "name": "fanpulse",
   "version": "1.0.0",
-  "description": "GenAI operations layer for FIFA World Cup 2026 stadiums — dynamic multilingual assistant, GPS directions, and crowd-science reasoning. Modeled on Jawaharlal Nehru Stadium, Delhi.",
+  "description": "GenAI operations layer for modern stadium sports — dynamic multilingual assistant, GPS directions, and crowd-science reasoning. Modeled on Jawaharlal Nehru Stadium, Delhi.",
   "private": true,
   "scripts": {
     "test": "node tests/logic.test.js",

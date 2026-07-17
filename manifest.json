@@ -1,7 +1,7 @@
 {
   "name": "FanPulse — Stadium Operations Assistant",
   "short_name": "FanPulse",
-  "description": "GenAI assistant for FIFA World Cup 2026 stadiums — live crowd signals, multilingual help, and GPS directions.",
+  "description": "GenAI assistant for modern stadium sports — live crowd signals, multilingual help, and GPS directions.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

@@ -1,4 +1,4 @@
-# FanPulse — GenAI Operations Layer for FIFA World Cup 2026 Stadiums
+# FanPulse — GenAI Operations Layer for Modern Stadium Sports
 
 **Challenge 4 — Smart Stadiums & Tournament Operations**
 
