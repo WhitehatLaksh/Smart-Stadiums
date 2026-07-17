@@ -260,6 +260,8 @@
   .gate-chip .g-dot{width:8px; height:8px; border-radius:50%; flex:none;}
   .gate-chip .g-name{color:var(--mist);}
   .gate-chip .g-val{font-family:'IBM Plex Mono', monospace; font-weight:500;}
+  .gate-chip.critical{border-color:rgba(255,90,95,0.42); background:rgba(255,90,95,0.08);}
+  .gate-chip.heavy{border-color:rgba(255,178,56,0.34); background:rgba(255,178,56,0.08);}
 
   /* ---------- Assistant panel ---------- */
   .panel{
@@ -292,6 +294,37 @@
     font-size:13px;
     cursor:pointer;
   }
+  .panel-bar-right{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .ai-mode-btn{
+    display:flex; align-items:center; gap:5px;
+    background:var(--bg-3); color:var(--mist);
+    border:1px solid var(--line-strong); border-radius:8px;
+    padding:8px 11px; font-size:12.5px; font-weight:600; cursor:pointer;
+    font-family:'IBM Plex Sans', sans-serif;
+  }
+  .ai-mode-btn.live{color:var(--calm); border-color:var(--calm);}
+  .ai-settings{
+    display:none;
+    padding:14px 22px; border-bottom:1px solid var(--line);
+    background:rgba(237,243,238,0.03);
+  }
+  .ai-settings.show{display:block;}
+  .ai-settings p{margin:0 0 10px; font-size:12.5px; color:var(--mist); line-height:1.55;}
+  .ai-settings p b{color:var(--ink);}
+  .ai-settings-row{display:flex; gap:8px; flex-wrap:wrap;}
+  .ai-settings-row input{
+    flex:1; min-width:180px;
+    background:var(--bg-3); color:var(--ink);
+    border:1px solid var(--line-strong); border-radius:8px;
+    padding:9px 12px; font-family:'IBM Plex Mono', monospace; font-size:12.5px;
+  }
+  .ai-settings-row button{
+    border:1px solid var(--line-strong); border-radius:8px;
+    padding:9px 14px; font-size:12.5px; font-weight:600; cursor:pointer;
+    font-family:'IBM Plex Sans', sans-serif; background:transparent; color:var(--ink);
+  }
+  #saveKeyBtn{background:var(--amber); color:var(--bg-3); border-color:var(--amber);}
+  .fallback-note{display:block; margin-top:6px; font-size:11.5px; color:var(--mist); font-style:italic;}
 
   .chat{
     min-height:220px;
@@ -503,14 +536,26 @@
     <div class="panel-card">
       <div class="panel-bar">
         <h2>Ask FanPulse</h2>
-        <select id="langSelect" aria-label="Response language">
-          <option value="en">English</option>
-          <option value="es">Español</option>
-          <option value="hi">हिन्दी</option>
-          <option value="ar">العربية</option>
-          <option value="fr">Français</option>
-          <option value="pt">Português</option>
-        </select>
+        <div class="panel-bar-right">
+          <button id="aiModeBtn" class="ai-mode-btn" type="button">⚙ <span id="aiModeLabel">Simulated</span></button>
+          <select id="langSelect" aria-label="Response language">
+            <option value="en">English</option>
+            <option value="es">Español</option>
+            <option value="hi">हिन्दी</option>
+            <option value="ar">العربية</option>
+            <option value="fr">Français</option>
+            <option value="pt">Português</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="ai-settings" id="aiSettings">
+        <p>Paste your own Claude API key to make FanPulse's reasoning genuinely live (reads the same gate/weather/kickoff signals shown above). <b>Stored only in this browser</b> — never sent anywhere but api.anthropic.com, never committed to this repo. Get a key at <a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a>.</p>
+        <div class="ai-settings-row">
+          <input type="password" id="apiKeyInput" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" />
+          <button type="button" id="saveKeyBtn">Save</button>
+          <button type="button" id="clearKeyBtn">Clear</button>
+        </div>
       </div>
 
       <div class="chat" id="chat"></div>
@@ -612,7 +657,7 @@
         <p class="los-readout" id="losText" style="margin-top:6px;">—</p>
 
         <div class="cs-note">
-          <b>Methodology:</b> "Devices on venue Wi-Fi" counts connections to the venue's own access points — legitimate, consent-free, because it's the venue's network counting its own traffic. "FanPulse app users" mirrors how Google Maps itself estimates how busy a place is: not by scanning nearby phones, but by aggregating its <i>own app's</i> opted-in users (Android's Location Timeline). No app — including this one — can see another device's GPS without that person installing that specific app and granting it permission; that's an OS-level restriction, not a missing feature. Movement difficulty uses Fruin's pedestrian Level-of-Service scale (persons/m²), an established crowd-safety standard. CO₂ and heat index are shown instead of "oxygen %," since open-air/semi-enclosed stadiums don't lose measurable oxygen from crowding — CO₂ buildup and heat are the metrics that actually change and matter for comfort and safety. (A larger-scale tier exists in India via telecom cell-tower attach data — used for events like Kumbh Mela crowd management — but that requires an official government/telecom partnership, not something any public app can call directly.)
+          <b>Methodology:</b> "Devices on venue Wi-Fi" counts connections to the venue's own access points — legitimate, consent-free, because it's the venue's network counting its own traffic. "FanPulse app users" mirrors how Google Maps itself estimates how busy a place is: not by scanning nearby phones, but by aggregating its <i>own app's</i> opted-in users (Android's Location Timeline). No app — including this one — can see another device's GPS without that person installing that specific app and granting it permission; that's an OS-level restriction, not a missing feature. Movement difficulty uses Fruin's pedestrian Level-of-Service scale (persons/m²), an established crowd-safety standard. CO₂ and heat index are shown as the relevant metrics for comfort and safety in open-air and semi-enclosed stadiums. (A larger-scale tier exists in India via telecom cell-tower attach data — used for events like Kumbh Mela crowd management — but that requires an official government/telecom partnership, not something any public app can call directly.)
         </div>
       </div>
     </div>
@@ -635,23 +680,26 @@
   </footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="js/logic.js"></script>
 <script>
 (function(){
   "use strict";
 
   /* ============ live clock + kickoff countdown ============ */
   var kickoffTarget = new Date(Date.now() + 47*60*1000);
+  var kickoffState = null;
   function pad(n){return n<10 ? '0'+n : ''+n;}
   function tickClock(){
     var now = new Date();
     document.getElementById('clockNow').textContent =
       pad(now.getHours())+':'+pad(now.getMinutes())+':'+pad(now.getSeconds());
-    var diff = Math.max(0, kickoffTarget - now);
-    var m = Math.floor(diff/60000), s = Math.floor((diff%60000)/1000);
-    document.getElementById('kickoffClock').textContent = pad(m)+':'+pad(s);
+    var state = FanPulseLogic.getKickoffState(kickoffTarget, now);
+    document.getElementById('kickoffClock').textContent = state.countdownText;
+    if(!kickoffState || kickoffState.isLive !== state.isLive || kickoffState.advisory !== state.advisory){
+      kickoffState = state;
+      renderGates();
+    }
   }
-  tickClock();
-  setInterval(tickClock, 1000);
 
   /* ============ simulated live stadium state ============ */
   var gates = [
@@ -672,26 +720,18 @@
   };
   var weather = {tempC:34, condition:'clear'};
 
-  /* Fruin pedestrian Level-of-Service scale (persons/m²) — established crowd-safety standard */
-  var LOS_BANDS = [
-    {code:'A', max:0.4,  desc:'Free flow — no one has to adjust their path.'},
-    {code:'B', max:0.7,  desc:'Comfortable — occasional minor speed adjustments.'},
-    {code:'C', max:1.0,  desc:'Constrained — path choice is restricted, walking speed drops.'},
-    {code:'D', max:1.4,  desc:'Restricted — frequent contact with others, shuffling pace.'},
-    {code:'E', max:2.2,  desc:'Very slow — occasional unavoidable contact, hard to turn around.'},
-    {code:'F', max:Infinity, desc:'Crowd-crush risk — near-static, involuntary contact, unsafe to remain.'}
-  ];
-  function losFor(perM2){
-    for(var i=0;i<LOS_BANDS.length;i++){ if(perM2 < LOS_BANDS[i].max) return LOS_BANDS[i]; }
-    return LOS_BANDS[LOS_BANDS.length-1];
-  }
+  /* Pure geometry/classification/intent logic now lives in js/logic.js — shared
+     with the Node test suite (tests/logic.test.js) so the tested code and the
+     shipped code are identical, not a copy that can drift out of sync. */
+  var LOS_BANDS = FanPulseLogic.LOS_BANDS;
+  var losFor = FanPulseLogic.losFor;
+  var densityLevel = FanPulseLogic.densityLevel;
+  var clamp = FanPulseLogic.clamp;
+  var distanceMeters = FanPulseLogic.distanceMeters;
+  var bearingDeg = FanPulseLogic.bearingDeg;
+  var compassFrom = FanPulseLogic.compassFrom;
+  var detectIntent = FanPulseLogic.detectIntent;
 
-  function densityLevel(v){
-    if(v>=85) return 'critical';
-    if(v>=65) return 'busy';
-    if(v>=35) return 'moderate';
-    return 'calm';
-  }
   function densityColor(v){
     if(v>=85) return getCss('--coral');
     if(v>=65) return getCss('--amber');
@@ -700,7 +740,6 @@
   function getCss(name){
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   }
-  function clamp(v,min,max){return Math.max(min, Math.min(max, v));}
   function rand(min,max){return Math.random()*(max-min)+min;}
 
   function stepState(){
@@ -727,20 +766,30 @@
   var gateRow = document.getElementById('gateRow');
   var signalGrid = document.getElementById('signalGrid');
 
+function gateSeverityClass(density){
+    if(density >= 85) return 'critical';
+    if(density >= 65) return 'heavy';
+    return 'normal';
+  }
+
   function renderGates(){
+    var kickoffStatus = FanPulseLogic.getKickoffState(kickoffTarget, new Date());
     gateRow.innerHTML = gates.map(function(g){
-      return '<div class="gate-chip"><span class="g-dot" style="background:'+densityColor(g.density)+'"></span>'+
+      return '<div class="gate-chip '+gateSeverityClass(g.density)+'"><span class="g-dot" style="background:'+densityColor(g.density)+'"></span>'+ 
         '<span class="g-name">'+g.label+'</span><span class="g-val">'+g.density+'%</span></div>';
     }).join('');
 
     var agg = Math.round(gates.reduce(function(s,g){return s+g.density;},0) / gates.length);
-    document.getElementById('aggReading').textContent = agg + '%';
+    var aggTone = agg >= 85 ? 'critical bottlenecks' : agg >= 65 ? 'heavy flow' : 'steady flow';
+    document.getElementById('aggReading').textContent = agg + '% · ' + aggTone;
 
     var busiest = mostCongested();
+    var heatIndex = FanPulseLogic.getHeatIndex(weather.tempC, 2.4);
+    var hydrationWatch = FanPulseLogic.shouldHydrationWatch(weather.tempC, heatIndex);
     signalGrid.innerHTML =
-      '<div class="signal"><div class="s-label">Busiest gate</div><div class="s-value">'+busiest.label+'</div><div class="s-sub">'+busiest.density+'% capacity &middot; '+densityLevel(busiest.density)+'</div></div>'+
-      '<div class="signal"><div class="s-label">Weather on site</div><div class="s-value">'+weather.tempC+'°C</div><div class="s-sub">'+weather.condition+' &middot; hydration watch above 32°C</div></div>'+
-      '<div class="signal"><div class="s-label">Kickoff countdown</div><div class="s-value">'+document.getElementById('kickoffClock').textContent+'</div><div class="s-sub">arrival window closing</div></div>'+
+      '<div class="signal"><div class="s-label">Busiest gate</div><div class="s-value">'+busiest.label+'</div><div class="s-sub">'+busiest.density+'% capacity &middot; '+densityLevel(busiest.density)+'</div></div>'+ 
+      '<div class="signal"><div class="s-label">Weather on site</div><div class="s-value">'+weather.tempC+'°C</div><div class="s-sub">feels like '+heatIndex+'°C &middot; '+(hydrationWatch ? 'hydration watch active' : 'comfort still manageable')+'</div></div>'+ 
+      '<div class="signal"><div class="s-label">Kickoff countdown</div><div class="s-value">'+kickoffStatus.countdownText+'</div><div class="s-sub">'+kickoffStatus.advisory+'</div></div>'+ 
       '<div class="signal"><div class="s-label">Gates monitored</div><div class="s-value">'+gates.length+'</div><div class="s-sub">refreshed every 2.5s</div></div>';
 
     renderCrowdScience();
@@ -763,7 +812,7 @@
     var perM2 = +(occupants / g.areaM2).toFixed(2);
     var los = losFor(perM2);
     var co2 = Math.round(clamp(420 + perM2*300, 420, 2200));
-    var heatIndex = +(weather.tempC + clamp(perM2*1.6, 0, 6)).toFixed(1);
+    var heatIndex = FanPulseLogic.getHeatIndex(weather.tempC, perM2*1.6);
     // Opted-in tier: fans who installed FanPulse and granted location — the same mechanism
     // Google Maps itself uses (its own app's consenting users), just at official-app scale.
     var optInRate = 0.22; // illustrative adoption rate for a tournament app
@@ -781,6 +830,9 @@
     var pct = clamp(perM2/2.6, 0, 1) * 100;
     document.getElementById('losDot').style.left = pct + '%';
   }
+
+  tickClock();
+  setInterval(tickClock, 1000);
 
   /* ============ canvas pulse monitor ============ */
   var canvas = document.getElementById('pulseCanvas');
@@ -842,15 +894,7 @@
   }
 
   /* ============ reasoning / response engine ============ */
-  function detectIntent(text){
-    var t = text.toLowerCase();
-    if(/wheelchair|accessib|disab|hearing|visual|sign language/.test(t)) return 'accessibility';
-    if(/leave|depart|transport|train|metro|bus|when should/.test(t)) return 'transport';
-    if(/safe|busy|crowd|density|how full/.test(t)) return 'safety';
-    if(/hot|water|heat|sun|hydrat/.test(t)) return 'weather';
-    if(/gate|route|way to|navigat|direction|fastest/.test(t)) return 'navigation';
-    return 'general';
-  }
+  /* detectIntent is provided by FanPulseLogic (js/logic.js) — see top of script. */
 
   var T = {
     en: {
@@ -1012,19 +1056,85 @@
     var pack = T[lang] || T.en;
     var entry = pack[intent] || pack.general;
     var text = (typeof entry === 'function') ? entry(ctx) : entry;
-    return { text: text, gateId: MAP_INTENTS[intent] ? g.id : null };
+    return { text: text, gateId: MAP_INTENTS[intent] ? g.id : null, ctx: ctx };
+  }
+
+  /* ============ live GenAI mode (bring-your-own Claude API key) ============ */
+  /* The key lives ONLY in this browser's localStorage — never committed to the repo,
+     never sent anywhere except directly from this page to api.anthropic.com. This is
+     what makes it safe to ship in a public, zero-secret repo: nobody's key is baked in.
+     Without a key, FanPulse falls back to the deterministic reasoning engine below,
+     which mirrors the same live-context logic a live model is given. */
+  var API_KEY_STORAGE = 'fanpulse_claude_key';
+  var CLAUDE_MODEL = 'claude-sonnet-5';
+
+  function getStoredKey(){
+    try{ return localStorage.getItem(API_KEY_STORAGE) || ''; }catch(e){ return ''; }
+  }
+
+  async function callClaudeAPI(userText, ctx, lang){
+    var key = getStoredKey();
+    if(!key) return null;
+
+    var sys = 'You are FanPulse, a live stadium-operations assistant at Jawaharlal Nehru Stadium, Delhi. ' +
+      'Reply ONLY in language code "' + lang + '", in 1-3 short, concrete, operational sentences — no preamble. ' +
+      'Live signals you must reason over and cite when relevant: gate=' + ctx.g.label + ', gate_density_pct=' + ctx.g.density +
+      ', gate_level=' + ctx.lvl + ', busiest_gate=' + ctx.busy.label + '(' + ctx.busy.density + '%), ' +
+      'weather_c=' + ctx.temp + ', minutes_to_kickoff="' + ctx.kickoff + '".';
+
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function(){ controller.abort(); }, 12000);
+
+    try{
+      var resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method:'POST',
+        headers:{
+          'content-type':'application/json',
+          'x-api-key': key,
+          'anthropic-version':'2023-06-01',
+          'anthropic-dangerous-direct-browser-access':'true'
+        },
+        body: JSON.stringify({
+          model: CLAUDE_MODEL,
+          max_tokens: 300,
+          system: sys,
+          messages:[{ role:'user', content:userText }]
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      if(!resp.ok) return null;
+      var data = await resp.json();
+      var blocks = (data.content || []).filter(function(b){ return b.type === 'text'; }).map(function(b){ return b.text; });
+      var out = blocks.join(' ').trim();
+      return out || null;
+    } catch(e){
+      clearTimeout(timeoutId);
+      return null;
+    }
+  }
+
+  function refreshAiModeUI(){
+    var hasKey = !!getStoredKey();
+    var label = document.getElementById('aiModeLabel');
+    var input = document.getElementById('apiKeyInput');
+    if(label) label.textContent = hasKey ? 'Live Claude' : 'Simulated';
+    var btn = document.getElementById('aiModeBtn');
+    if(btn) btn.classList.toggle('live', hasKey);
+    if(input) input.placeholder = hasKey ? '•••••••••••••••••••• (key saved)' : 'sk-ant-...';
   }
 
   /* ============ chat UI wiring ============ */
   var chat = document.getElementById('chat');
   var langSelect = document.getElementById('langSelect');
 
-  function addMsg(role, text, gateId){
+  function addMsg(role, text, gateId, isLive){
     var el = document.createElement('div');
     el.className = 'msg ' + role;
     if(role === 'bot'){
+      var tagText = isLive ? '⚡ FanPulse · Live Claude' : 'FanPulse · Simulated';
       var btn = gateId ? '<button class="show-map-btn" type="button" data-gate="'+gateId+'">📍 Show on map</button>' : '';
-      el.innerHTML = '<span class="tag">FanPulse</span>' + text + (btn ? '<br>' + btn : '');
+      el.innerHTML = '<span class="tag">'+tagText+'</span>' + text + (btn ? '<br>' + btn : '');
     } else {
       el.textContent = text;
     }
@@ -1046,16 +1156,28 @@
     if(el) el.remove();
   }
 
-  function handleQuestion(text){
+  async function handleQuestion(text){
     if(!text.trim()) return;
     addMsg('user', text);
     showTyping();
     var lang = langSelect.value;
-    setTimeout(function(){
+    var reply = generateResponse(text, lang); // always compute — doubles as the offline/fallback answer
+    var hasKey = !!getStoredKey();
+
+    if(hasKey){
+      var liveText = await callClaudeAPI(text, reply.ctx, lang);
       removeTyping();
-      var reply = generateResponse(text, lang);
-      addMsg('bot', reply.text, reply.gateId);
-    }, 620 + Math.random()*500);
+      if(liveText){
+        addMsg('bot', liveText, reply.gateId, true);
+      } else {
+        addMsg('bot', reply.text + '<br><span class="fallback-note">Live Claude call failed (bad/expired key, rate limit, or offline) — showing the simulated reasoning engine instead.</span>', reply.gateId, false);
+      }
+    } else {
+      setTimeout(function(){
+        removeTyping();
+        addMsg('bot', reply.text, reply.gateId, false);
+      }, 620 + Math.random()*500);
+    }
   }
 
   document.getElementById('composer').addEventListener('submit', function(e){
@@ -1068,7 +1190,11 @@
   document.getElementById('chips').addEventListener('click', function(e){
     var btn = e.target.closest('.chip');
     if(!btn) return;
-    handleQuestion(btn.getAttribute('data-q'));
+    var input = document.getElementById('userInput');
+    var q = btn.getAttribute('data-q');
+    input.value = q;
+    input.focus();
+    handleQuestion(q);
   });
 
   chat.addEventListener('click', function(e){
@@ -1094,29 +1220,7 @@
   var userLocation = null;
   var leafletMap = null, userMarker = null, routeLine = null;
 
-  function toRad(d){ return d * Math.PI / 180; }
-
-  function distanceMeters(lat1, lon1, lat2, lon2){
-    var R = 6371000;
-    var dLat = toRad(lat2 - lat1);
-    var dLon = toRad(lon2 - lon1);
-    var a = Math.sin(dLat/2)*Math.sin(dLat/2) +
-            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-            Math.sin(dLon/2)*Math.sin(dLon/2);
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  }
-
-  function bearingDeg(lat1, lon1, lat2, lon2){
-    var y = Math.sin(toRad(lon2-lon1)) * Math.cos(toRad(lat2));
-    var x = Math.cos(toRad(lat1))*Math.sin(toRad(lat2)) -
-            Math.sin(toRad(lat1))*Math.cos(toRad(lat2))*Math.cos(toRad(lon2-lon1));
-    return (Math.atan2(y,x) * 180/Math.PI + 360) % 360;
-  }
-
-  function compassFrom(deg){
-    var dirs = ['N','NE','E','SE','S','SW','W','NW'];
-    return dirs[Math.round(deg/45) % 8];
-  }
+  /* distanceMeters, bearingDeg, compassFrom are provided by FanPulseLogic (js/logic.js). */
 
   function populateDestGate(filter){
     var sel = document.getElementById('destGate');
@@ -1198,14 +1302,23 @@
   }
 
   function updateRoute(){
+    var originKey = document.getElementById('originSelect').value;
+    var mode = getTravelMode();
     var origin = getOriginPoint();
+    var shouldWarn = FanPulseLogic.shouldShowLocationWarning(originKey, mode, !!userLocation);
+    var statusEl = document.getElementById('gpsStatus');
     if(!origin){
-      var statusEl = document.getElementById('gpsStatus');
+      document.getElementById('routeReadout').classList.remove('show');
       statusEl.textContent = 'Share your location to route using this travel mode.';
       statusEl.className = 'gps-status err';
       return;
     }
-    var mode = getTravelMode();
+    if(shouldWarn){
+      document.getElementById('routeReadout').classList.remove('show');
+      statusEl.textContent = 'Location not shared yet — choose a preset origin like airport or railway, or share your location for a live route.';
+      statusEl.className = 'gps-status';
+      return;
+    }
     var destSel = document.getElementById('destGate');
     var dest = gates.find(function(g){ return g.id === destSel.value; }) || gates[0];
     var parking = isPersonalVehicleMode(mode) ? nearestParkingToGate(dest).parking : null;
@@ -1247,7 +1360,7 @@
     document.getElementById('routeReadout').classList.add('show');
 
     var statusEl = document.getElementById('gpsStatus');
-    if(mode === 'airport' || mode === 'railway'){
+    if(mode === 'airport' || mode === 'railway' || originKey === 'airport' || originKey === 'railway'){
       statusEl.textContent = 'Routing from ' + origin.label + ' to ' + dest.label + '. Share your location anytime for even more precise walking directions inside the stadium.';
       statusEl.className = 'gps-status ok';
     } else {
@@ -1288,7 +1401,9 @@
       statusEl.className = 'gps-status ok';
       updateRoute();
     }, function(err){
-      statusEl.textContent = 'Could not get your location (' + err.message + '). Pick a gate and use "Open in Google/Apple Maps" instead.';
+      document.getElementById('routeReadout').classList.remove('show');
+      document.getElementById('gateSearch').focus();
+      statusEl.textContent = 'Could not get your location (' + err.message + '). Pick a gate with the search box or choose airport/railway for a preset route.';
       statusEl.className = 'gps-status err';
     }, {enableHighAccuracy:true, timeout:10000});
   });
@@ -1352,9 +1467,29 @@
     });
   }
 
+  document.getElementById('aiModeBtn').addEventListener('click', function(){
+    document.getElementById('aiSettings').classList.toggle('show');
+  });
+  document.getElementById('saveKeyBtn').addEventListener('click', function(){
+    var val = document.getElementById('apiKeyInput').value.trim();
+    if(!val) return;
+    try{ localStorage.setItem(API_KEY_STORAGE, val); }catch(e){}
+    document.getElementById('apiKeyInput').value = '';
+    refreshAiModeUI();
+    document.getElementById('aiSettings').classList.remove('show');
+    addMsg('bot', "Live Claude connected — I'll now reason over the live signals using your API key for this session.", null, true);
+  });
+  document.getElementById('clearKeyBtn').addEventListener('click', function(){
+    try{ localStorage.removeItem(API_KEY_STORAGE); }catch(e){}
+    document.getElementById('apiKeyInput').value = '';
+    refreshAiModeUI();
+    addMsg('bot', "Switched back to the simulated reasoning engine.", null, false);
+  });
+
   /* seed conversation */
   window.addEventListener('load', function(){
     resizeCanvas();
+    refreshAiModeUI();
     populateDestGate();
     populateCsGate();
     renderCrowdScience();
